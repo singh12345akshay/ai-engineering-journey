@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -28,3 +29,10 @@ class AIResponse(BaseModel):
         print(f"Total tokens:      {self.total_tokens}")
         print(f"Model:             {self.model_used}")
         print("─" * 40 + "\n")
+
+
+# NEW — this is what your /ask endpoint returns to the client
+class APIResponse(BaseModel):
+    success: bool
+    data: Optional[AIResponse] = None
+    error: Optional[str] = None
