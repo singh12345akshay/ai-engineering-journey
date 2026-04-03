@@ -1,10 +1,32 @@
-from typing import Optional
+from enum import Enum
+
 from pydantic import BaseModel, Field, model_validator
 
 
 class UserQuery(BaseModel):
+    question: str = Field(..., min_length=1)
+
+
+class AIResponse(BaseModel):
+    answer: str
+
+
+class APIResponse(BaseModel):
+    success: bool
+    data: AIResponse
+
+
+class PromptType(str, Enum):
+    zero_shot = "zero_shot"
+    few_shot = "few_shot"
+    chain_of_thought = "chain_of_thought"
+    structured_output = "structured_output"
+
+
+class AdvancedQuery(BaseModel):
     question: str = Field(..., min_length=3, max_length=500)
-    max_tokens: int = Field(default=300, ge=50, le=1000)
+    prompt_type: PromptType = Field(default=PromptType.zero_shot)
+    max_tokens: int = Field(default=500, ge=50, le=1000)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
     @model_validator(mode='after')
@@ -13,26 +35,10 @@ class UserQuery(BaseModel):
         return self
 
 
-class AIResponse(BaseModel):
+class AdvancedResponse(BaseModel):
+    question: str
+    prompt_type: str
     answer: str
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
-    model_used: str
-
-    def display(self):
-        print("\n" + "─" * 40)
-        print(f"Answer:\n{self.answer}")
-        print("─" * 40)
-        print(f"Prompt tokens:     {self.prompt_tokens}")
-        print(f"Completion tokens: {self.completion_tokens}")
-        print(f"Total tokens:      {self.total_tokens}")
-        print(f"Model:             {self.model_used}")
-        print("─" * 40 + "\n")
-
-
-# NEW — this is what your /ask endpoint returns to the client
-class APIResponse(BaseModel):
-    success: bool
-    data: Optional[AIResponse] = None
-    error: Optional[str] = None
