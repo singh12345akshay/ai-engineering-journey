@@ -1,6 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.models import DocumentInput, SearchQuery, SearchResponse, SearchResult
 from app.services.embeddings import add_document, search_documents, get_collection_count
+
+import tempfile
+import os
+from app.services.document_parser import parse_and_chunk_document
+from app.services.embeddings import (
+    add_document, search_documents,
+    get_collection_count, add_document_chunks
+)
+from app.models import (
+    DocumentInput, SearchQuery, SearchResponse,
+    SearchResult, DocumentUploadResponse
+)
 
 router = APIRouter(prefix="/search", tags=["Search"])
 
@@ -44,3 +56,55 @@ async def search(query: SearchQuery):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/upload", response_model=DocumentUploadResponse)
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Upload a PDF or PPTX file.
+    Extracts text, chunks it, embeds it, stores in ChromaDB.
+    """
+    # validate file type
+    allowed = [".pdf", ".pptx", ".ppt"]
+    ext = os.path.splitext(file.filename)[1].lower()
+
+    if ext not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type {ext} not supported. Use PDF or PPTX."
+        )
+
+    # save uploaded file temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        # parse and chunk the document
+        chunks = parse_and_chunk_document(tmp_path)
+
+        if not chunks:
+            raise HTTPException(
+                status_code=400,
+                detail="No text could be extracted from this file."
+            )
+
+        # use filename without extension as doc ID prefix
+        doc_id_prefix = os.path.splitext(file.filename)[0]
+
+        # embed and store all chunks
+        result = add_document_chunks(chunks, doc_id_prefix)
+
+        return DocumentUploadResponse(
+            filename=file.filename,
+            chunks_added=result["chunks_added"],
+            status="success",
+            message=f"Extracted and indexed {result['chunks_added']} chunks from {file.filename}"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        # always clean up temp file
+        os.unlink(tmp_path)

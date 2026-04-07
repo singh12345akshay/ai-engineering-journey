@@ -59,3 +59,38 @@ def search_documents(query: str, n_results: int = 3) -> list[dict]:
 def get_collection_count() -> int:
     """How many documents are in the collection"""
     return collection.count()
+
+def add_document_chunks(chunks: list, doc_id_prefix: str) -> dict:
+    """
+    Add multiple chunks from a document to ChromaDB.
+    Each chunk gets its own vector and metadata.
+    """
+    if not chunks:
+        return {"status": "no chunks to add", "count": 0}
+
+    ids = []
+    embeddings = []
+    documents = []
+    metadatas = []
+
+    for i, chunk in enumerate(chunks):
+        chunk_id = f"{doc_id_prefix}_chunk_{i}"
+        embedding = embed_text(chunk["text"])
+
+        ids.append(chunk_id)
+        embeddings.append(embedding)
+        documents.append(chunk["text"])
+        metadatas.append(chunk["metadata"])
+
+    collection.add(
+        ids=ids,
+        embeddings=embeddings,
+        documents=documents,
+        metadatas=metadatas
+    )
+
+    return {
+        "status": "added",
+        "chunks_added": len(chunks),
+        "doc_id_prefix": doc_id_prefix
+    }

@@ -65,3 +65,9 @@ class SearchResponse(BaseModel):
     query: str
     results: list[SearchResult]
     total_results: int
+    
+class DocumentUploadResponse(BaseModel):
+    filename: str
+    chunks_added: int
+    status: str
+    message: str
