@@ -102,35 +102,34 @@ def chunk_text(text: str, chunk_size: int = 500,
 
 def parse_and_chunk_document(file_path: str,
                               chunk_size: int = 500,
-                              overlap: int = 50) -> List[dict]:
+                              overlap: int = 50,
+                              original_filename: str = None) -> List[dict]:
     """
-    Main function — parse document and return chunked pieces
-    ready for embedding.
-
-    Each chunk includes:
-    - text: the actual chunk content
-    - metadata: source file, page/slide number, chunk index
+    Parse document and return chunked pieces ready for embedding.
+    original_filename: the real filename to store in metadata
+                       instead of the temp file path
     """
-    # detect file type from extension
     ext = os.path.splitext(file_path)[1].lower()
+    display_name = original_filename or os.path.basename(file_path)
 
     if ext == ".pdf":
         pages = extract_text_from_pdf(file_path)
     elif ext in [".pptx", ".ppt"]:
         pages = extract_text_from_pptx(file_path)
     else:
-        raise ValueError(f"Unsupported file type: {ext}. Use PDF or PPTX.")
+        raise ValueError(f"Unsupported file type: {ext}")
+
+    # override source name with real filename
+    for page in pages:
+        page["source"] = display_name
 
     chunks = []
     chunk_index = 0
 
     for page in pages:
-        # chunk each page/slide separately
-        # this keeps chunks within page boundaries
         page_chunks = chunk_text(page["text"], chunk_size, overlap)
 
         for chunk in page_chunks:
-            # skip chunks that are too short to be meaningful
             if len(chunk.split()) < 10:
                 continue
 
@@ -140,7 +139,7 @@ def parse_and_chunk_document(file_path: str,
                     "source": page["source"],
                     "type": page["type"],
                     "chunk_index": chunk_index,
-                    "page_or_slide": page.get("page_number") or page.get("slide_number", 0)
+                    "page_or_slide": page.get("page_number") or page.get("slide_number") or page.get("sheet_number", 0)
                 }
             }
             chunks.append(chunk_data)

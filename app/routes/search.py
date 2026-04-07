@@ -81,7 +81,7 @@ async def upload_document(file: UploadFile = File(...)):
 
     try:
         # parse and chunk the document
-        chunks = parse_and_chunk_document(tmp_path)
+        chunks = parse_and_chunk_document(tmp_path,original_filename=file.filename)
 
         if not chunks:
             raise HTTPException(
