@@ -42,3 +42,26 @@ class AdvancedResponse(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
+    
+class DocumentInput(BaseModel):
+    doc_id: str = Field(..., min_length=1, max_length=100)
+    text: str = Field(..., min_length=10, max_length=5000)
+    metadata: dict = Field(default={})
+
+
+class SearchQuery(BaseModel):
+    query: str = Field(..., min_length=3, max_length=500)
+    n_results: int = Field(default=3, ge=1, le=10)
+
+
+class SearchResult(BaseModel):
+    id: str
+    text: str
+    similarity: float
+    metadata: dict
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]
+    total_results: int

@@ -20,3 +20,75 @@ Hallucinations happen because the model predicts statistically likely tokens —
 
 ## 7. Fine-tuning vs prompting
 Prompting gives the model temporary instructions at inference time — it guides the output without changing anything permanent. Every request starts fresh. Fine-tuning permanently updates the model's weights by training on a specific dataset — changing the model itself. Use prompting when you need flexible, quickly changeable behaviour and when you're iterating fast. Use fine-tuning when you need consistent domain-specific behaviour across thousands of requests, have high quality labelled data, and have a clear performance gap that prompting alone can't close. For most startups — RAG and prompting first, fine-tune only when you have proven need and sufficient data.
+
+---
+
+## Q8. Why must you use the same embedding model for adding and searching?
+
+Each embedding model creates vectors in its own mathematical space. If you 
+add documents with model A and search with model B, the vectors live in 
+incompatible spaces and similarity scores become meaningless.
+
+Same model both ways — always.
+
+---
+
+## Q9. Why did the old documents return low similarity scores (0.1–0.2)?
+
+The old documents were written as technical definitions using formal language. 
+The query was conversational. The embedding model couldn't bridge that gap 
+well enough to produce high similarity scores.
+
+Old RAG document: "RAG stands for Retrieval Augmented Generation. 
+It combines a retrieval system..."
+
+New RAG document: "If you want your AI app to answer questions from 
+your own data, use RAG..."
+
+The new version directly mirrors the query language — producing scores 
+of 0.5–0.7 instead of 0.1–0.2.
+
+---
+
+## Q10. What is query-document alignment and why does it matter?
+
+Query-document alignment means writing documents in language that matches 
+how users will actually query them. When document language and query language 
+are similar, the embedding model produces high similarity scores and retrieval 
+works correctly.
+
+This is one of the most common production RAG failure modes — correct 
+implementation, wrong results, because documents and queries are written 
+in completely different styles.
+
+In production RAG systems, document preprocessing and chunking strategy 
+directly affects retrieval quality. This is why it is a core AI engineering 
+skill.
+
+---
+
+## Q11. What would happen if you searched for something completely 
+unrelated to all documents?
+
+ChromaDB would still return the n_results closest documents — it always 
+returns something. But the similarity scores would be very low (0.05–0.15). 
+
+In production you handle this by setting a minimum similarity threshold 
+and returning "no relevant results found" if nothing scores above it:
+```python
+results = [r for r in results if r["similarity"] > 0.4]
+if not results:
+    return {"message": "No relevant documents found"}
+```
+
+---
+
+## Key lesson from Day 5
+
+Semantic search working correctly depends on two things equally:
+
+1. Correct implementation (embeddings, ChromaDB, cosine similarity)
+2. Document quality and query-document alignment
+
+Most tutorials only teach point 1. Point 2 is what separates 
+production RAG systems from tutorial demos.
