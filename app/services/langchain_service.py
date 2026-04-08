@@ -1,4 +1,5 @@
 import os
+from langchain_core.documents import Document
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -6,6 +7,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import HumanMessage, AIMessage
 from app.config import settings
+from app.services.embeddings import get_langchain_retriever
 
 # initialise the LLM once
 # temperature=0.7 for general chat
@@ -129,3 +131,150 @@ def get_conversation_history(session_id: str) -> dict:
             formatted.append({"role": "assistant", "content": msg.content})
 
     return {"session_id": session_id, "history": formatted}
+
+# ── Chain 4: RAG — Retrieval + Generation ───────────────────────────────────
+
+rag_prompt = ChatPromptTemplate.from_messages([
+    ("system", """You are a helpful assistant that answers questions
+based ONLY on the provided context from documents.
+
+Rules:
+- If the answer is in the context, answer clearly and cite the source
+- If the answer is NOT in the context, say exactly:
+  "I don't have that information in the provided documents."
+- Never make up information
+- Always mention which document and page your answer comes from
+
+Context:
+{context}"""),
+    ("human", "{question}")
+])
+
+
+def format_docs(docs: list[Document]) -> str:
+    """
+    Format retrieved documents into a context string.
+    Includes source and page number for citation.
+    """
+    formatted = []
+    for doc in docs:
+        source = doc.metadata.get("source", "unknown")
+        page = doc.metadata.get("page_or_slide", "?")
+        formatted.append(
+            f"Source: {source} (page {page})\n{doc.page_content}"
+        )
+    return "\n\n---\n\n".join(formatted)
+
+
+async def ask_with_rag(question: str, n_results: int = 3) -> dict:
+    """
+    RAG chain — retrieves relevant chunks then generates answer.
+    This is the complete Retrieval Augmented Generation pattern.
+    """
+    retriever = get_langchain_retriever(n_results)
+
+    # retrieve relevant docs first
+    docs = retriever.invoke(question)
+
+    if not docs:
+        return {
+            "answer": "I don't have any relevant documents to answer this question.",
+            "sources": [],
+            "chunks_used": 0,
+            "chain": "rag"
+        }
+
+    # format docs into context string
+    context = format_docs(docs)
+
+    # build RAG chain
+    rag_chain = rag_prompt | llm | parser
+
+    # generate answer using retrieved context
+    answer = await rag_chain.ainvoke({
+        "context": context,
+        "question": question
+    })
+
+    # extract sources for citation
+    sources = []
+    for doc in docs:
+        source = doc.metadata.get("source", "unknown")
+        page = doc.metadata.get("page_or_slide", "?")
+        sources.append(f"{source} — page {page}")
+
+    return {
+        "answer": answer,
+        "sources": list(set(sources)),
+        "chunks_used": len(docs),
+        "chain": "rag"
+    }
+
+
+# ── Chain 5: Conversational RAG — Memory + Retrieval ────────────────────────
+
+conversational_rag_prompt = ChatPromptTemplate.from_messages([
+    ("system", """You are a helpful assistant that answers questions
+based on provided document context. You also remember the conversation history.
+
+Rules:
+- Answer using ONLY the provided context
+- If information is not in context say "I don't have that information"
+- Cite the source document and page number
+- Use conversation history for follow-up questions
+
+Context from documents:
+{context}"""),
+    ("placeholder", "{history}"),
+    ("human", "{question}")
+])
+
+
+async def ask_conversational_rag(question: str,
+                                  session_id: str,
+                                  n_results: int = 3) -> dict:
+    """
+    Conversational RAG — combines memory + retrieval + generation.
+    Remembers conversation history AND retrieves relevant documents.
+    This is the full production RAG pattern.
+    """
+    retriever = get_langchain_retriever(n_results)
+    memory = get_memory(session_id)
+
+    # retrieve relevant docs
+    docs = retriever.invoke(question)
+    context = format_docs(docs) if docs else "No relevant documents found."
+
+    # load conversation history
+    history = memory.load_memory_variables({})["history"]
+
+    # build chain
+    chain = conversational_rag_prompt | llm | parser
+
+    # generate answer
+    answer = await chain.ainvoke({
+        "context": context,
+        "question": question,
+        "history": history
+    })
+
+    # save to memory
+    memory.save_context(
+        {"input": question},
+        {"output": answer}
+    )
+
+    # extract sources
+    sources = []
+    for doc in docs:
+        source = doc.metadata.get("source", "unknown")
+        page = doc.metadata.get("page_or_slide", "?")
+        sources.append(f"{source} — page {page}")
+
+    return {
+        "answer": answer,
+        "sources": list(set(sources)),
+        "chunks_used": len(docs),
+        "session_id": session_id,
+        "chain": "conversational_rag"
+    }

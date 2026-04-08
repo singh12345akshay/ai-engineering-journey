@@ -92,3 +92,21 @@ class LangChainResponse(BaseModel):
 class ConversationHistory(BaseModel):
     session_id: str
     history: list
+    
+class RAGQuery(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+    session_id: str = Field(default="default", min_length=1, max_length=100)
+    n_results: int = Field(default=3, ge=1, le=10)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self
+
+
+class RAGResponse(BaseModel):
+    answer: str
+    sources: list[str]
+    chunks_used: int
+    session_id: Optional[str] = None
+    chain: str

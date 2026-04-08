@@ -1,11 +1,17 @@
 from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
+from langchain_chroma import Chroma
+from langchain_community.embeddings import SentenceTransformerEmbeddings
 
 # load the embedding model once at startup
 # all-MiniLM-L6-v2 is small, fast, and good quality
 # downloads automatically on first run (~90MB)
 model = SentenceTransformer('all-MiniLM-L6-v2')
+
+lc_embeddings = SentenceTransformerEmbeddings(
+    model_name="all-MiniLM-L6-v2"
+)
 
 # create ChromaDB client — stores data locally in ./chroma_db folder
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
@@ -94,3 +100,21 @@ def add_document_chunks(chunks: list, doc_id_prefix: str) -> dict:
         "chunks_added": len(chunks),
         "doc_id_prefix": doc_id_prefix
     }
+    
+    
+def get_langchain_retriever(n_results: int = 3):
+    """
+    Returns a LangChain retriever backed by ChromaDB.
+    Plugs directly into LangChain chains.
+    """
+    vectorstore = Chroma(
+        collection_name="documents",
+        embedding_function=lc_embeddings,
+        persist_directory="./chroma_db"
+    )
+
+    return vectorstore.as_retriever(
+        search_kwargs={
+            "k": n_results
+        }
+    )

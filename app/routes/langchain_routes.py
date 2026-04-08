@@ -6,6 +6,13 @@ from app.services.langchain_service import (
     clear_memory,
     get_conversation_history
 )
+from app.models import (
+    RAGQuery, RAGResponse
+)
+from app.services.langchain_service import (
+    ask_with_rag,
+    ask_conversational_rag
+)
 
 router = APIRouter(prefix="/lc", tags=["LangChain"])
 
@@ -57,3 +64,38 @@ async def get_history(session_id: str):
 async def delete_history(session_id: str):
     """Clear conversation history for a session."""
     return clear_memory(session_id)
+
+
+@router.post("/rag", response_model=RAGResponse)
+async def rag(query: RAGQuery):
+    """
+    RAG endpoint — retrieves from your uploaded documents
+    then generates a grounded answer with source citations.
+    No memory — each call is independent.
+    """
+    try:
+        result = await ask_with_rag(
+            question=query.question,
+            n_results=query.n_results
+        )
+        return RAGResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/rag/chat", response_model=RAGResponse)
+async def rag_chat(query: RAGQuery):
+    """
+    Conversational RAG — retrieval + generation + memory.
+    The complete production RAG pattern.
+    Send same session_id to maintain conversation context.
+    """
+    try:
+        result = await ask_conversational_rag(
+            question=query.question,
+            session_id=query.session_id,
+            n_results=query.n_results
+        )
+        return RAGResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
