@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -71,3 +72,23 @@ class DocumentUploadResponse(BaseModel):
     chunks_added: int
     status: str
     message: str
+    
+class LangChainQuery(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+    session_id: str = Field(default="default", min_length=1, max_length=100)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self
+
+
+class LangChainResponse(BaseModel):
+    answer: str
+    session_id: Optional[str] = None
+    chain: str
+
+
+class ConversationHistory(BaseModel):
+    session_id: str
+    history: list

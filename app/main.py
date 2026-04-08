@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.ai import router as ai_router
 from app.routes.search import router as search_router
+from app.routes.langchain_routes import router as langchain_router
 from app.config import settings
 
 app = FastAPI(
@@ -20,3 +21,4 @@ app.add_middleware(
 
 app.include_router(ai_router)
 app.include_router(search_router)
+app.include_router(langchain_router)  

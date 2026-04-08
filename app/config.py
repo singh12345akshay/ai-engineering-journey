@@ -14,4 +14,9 @@ class Settings:
     MAX_SEARCH_RESULTS: int = 10
     MIN_SIMILARITY_THRESHOLD: float = 0.15
 
+    # langsmith tracing
+    LANGCHAIN_TRACING_V2: str = os.getenv("LANGCHAIN_TRACING_V2", "false")
+    LANGCHAIN_API_KEY: str = os.getenv("LANGCHAIN_API_KEY", "")
+    LANGCHAIN_PROJECT: str = os.getenv("LANGCHAIN_PROJECT", "ai-engineer-journey")
+
 settings = Settings()
