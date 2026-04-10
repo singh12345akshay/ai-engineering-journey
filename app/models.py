@@ -110,3 +110,15 @@ class RAGResponse(BaseModel):
     chunks_used: int
     session_id: Optional[str] = None
     chain: str
+    
+class AdvancedRAGQuery(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+    session_id: str = Field(default="default")
+    n_candidates: int = Field(default=10, ge=3, le=20)
+    final_results: int = Field(default=3, ge=1, le=5)
+    alpha: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self

@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import HumanMessage, AIMessage
 from app.config import settings
+from app.services.advanced_rag import advanced_rag_search
 from app.services.embeddings import get_langchain_retriever
 
 # initialise the LLM once
@@ -277,4 +278,73 @@ async def ask_conversational_rag(question: str,
         "chunks_used": len(docs),
         "session_id": session_id,
         "chain": "conversational_rag"
+    }
+
+async def ask_advanced_rag(question: str,
+                            session_id: str,
+                            n_candidates: int = 10,
+                            final_results: int = 3) -> dict:
+    """
+    Advanced RAG — hybrid search + re-ranking + generation + memory.
+    Production-grade retrieval pipeline.
+    """
+    # stage 1 + 2 — hybrid search + re-ranking
+    reranked_docs = await advanced_rag_search(
+        query=question,
+        n_candidates=n_candidates,
+        final_results=final_results
+    )
+
+    if not reranked_docs:
+        return {
+            "answer": "I don't have any relevant documents to answer this.",
+            "sources": [],
+            "chunks_used": 0,
+            "retrieval_method": "advanced_rag",
+            "session_id": session_id
+        }
+
+    # format context with scores for transparency
+    context_parts = []
+    for doc in reranked_docs:
+        source = doc["metadata"].get("source", "unknown")
+        page = doc["metadata"].get("page_or_slide", "?")
+        context_parts.append(
+            f"Source: {source} (page {page})\n{doc['text']}"
+        )
+    context = "\n\n---\n\n".join(context_parts)
+
+    # get conversation memory
+    memory = get_memory(session_id)
+    history = memory.load_memory_variables({})["history"]
+
+    # generate answer using conversational RAG prompt
+    chain = conversational_rag_prompt | llm | parser
+
+    answer = await chain.ainvoke({
+        "context": context,
+        "question": question,
+        "history": history
+    })
+
+    # save to memory
+    memory.save_context(
+        {"input": question},
+        {"output": answer}
+    )
+
+    # build sources
+    sources = []
+    for doc in reranked_docs:
+        source = doc["metadata"].get("source", "unknown")
+        page = doc["metadata"].get("page_or_slide", "?")
+        sources.append(f"{source} — page {page}")
+
+    return {
+        "answer": answer,
+        "sources": list(set(sources)),
+        "chunks_used": len(reranked_docs),
+        "chain": "advanced_rag",
+        "retrieval_method": "hybrid_search + reranking",
+        "session_id": session_id
     }

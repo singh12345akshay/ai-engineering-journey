@@ -13,6 +13,20 @@ from app.services.langchain_service import (
     ask_with_rag,
     ask_conversational_rag
 )
+from app.services.langchain_service import (
+    ask_simple,
+    ask_with_memory,
+    ask_with_rag,
+    ask_conversational_rag,
+    ask_advanced_rag,
+    clear_memory,
+    get_conversation_history
+)
+from app.models import (
+    LangChainQuery, LangChainResponse,
+    ConversationHistory, RAGQuery, RAGResponse,
+    AdvancedRAGQuery
+)
 
 router = APIRouter(prefix="/lc", tags=["LangChain"])
 
@@ -95,6 +109,29 @@ async def rag_chat(query: RAGQuery):
             question=query.question,
             session_id=query.session_id,
             n_results=query.n_results
+        )
+        return RAGResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/rag/advanced", response_model=RAGResponse)
+async def advanced_rag(query: AdvancedRAGQuery):
+    """
+    Advanced RAG — hybrid search + re-ranking + generation + memory.
+
+    alpha parameter controls BM25 vs semantic balance:
+    0.0 = pure keyword, 0.5 = balanced, 1.0 = pure semantic
+
+    Two-stage retrieval:
+    Stage 1: hybrid search retrieves n_candidates
+    Stage 2: cross-encoder re-ranks to final_results
+    """
+    try:
+        result = await ask_advanced_rag(
+            question=query.question,
+            session_id=query.session_id,
+            n_candidates=query.n_candidates,
+            final_results=query.final_results
         )
         return RAGResponse(**result)
     except Exception as e:
