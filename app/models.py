@@ -122,3 +122,25 @@ class AdvancedRAGQuery(BaseModel):
     def clean_question(self):
         self.question = self.question.strip()
         return self
+    
+class DocumentQARequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+    session_id: str = Field(default="default", min_length=1, max_length=100)
+    n_candidates: int = Field(default=10, ge=3, le=20)
+    final_results: int = Field(default=3, ge=1, le=5)
+    alpha: float = Field(default=0.5, ge=0.0, le=1.0)
+    use_advanced: bool = Field(default=True)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self
+
+
+class DocumentQAResponse(BaseModel):
+    answer: str
+    sources: list[str]
+    chunks_used: int
+    session_id: str
+    retrieval_method: str
+    has_relevant_docs: bool

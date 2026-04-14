@@ -9,12 +9,13 @@ from langchain_core.messages import HumanMessage, AIMessage
 from app.config import settings
 from app.services.advanced_rag import advanced_rag_search
 from app.services.embeddings import get_langchain_retriever
+from langchain_community.chat_models import ChatOllama
 
 # initialise the LLM once
 # temperature=0.7 for general chat
-llm = ChatGroq(
-    model=settings.MODEL,
-    api_key=settings.GROQ_API_KEY,
+
+llm = ChatOllama(
+    model="llama3.2",
     temperature=0.7
 )
 
@@ -28,7 +29,7 @@ simple_prompt = ChatPromptTemplate.from_messages([
 ])
 
 simple_chain = simple_prompt | llm | parser
-
+    
 async def ask_simple(question: str) -> dict:
     """
     Simple QA chain — replaces your direct Groq API call.
@@ -347,4 +348,99 @@ async def ask_advanced_rag(question: str,
         "chain": "advanced_rag",
         "retrieval_method": "hybrid_search + reranking",
         "session_id": session_id
+    }
+async def document_qa(request_data: dict) -> dict:
+    """
+    Production document Q&A endpoint.
+    Combines everything:
+    - Advanced RAG (hybrid search + reranking) or basic RAG
+    - Conversation memory
+    - Hallucination prevention
+    - Source citation
+    - LangSmith tracing (automatic)
+    """
+    question = request_data["question"]
+    session_id = request_data["session_id"]
+    use_advanced = request_data.get("use_advanced", True)
+    n_candidates = request_data.get("n_candidates", settings.DEFAULT_N_CANDIDATES)
+    final_results = request_data.get("final_results", settings.DEFAULT_FINAL_RESULTS)
+    alpha = request_data.get("alpha", settings.DEFAULT_ALPHA)
+
+    # retrieve relevant documents
+    if use_advanced:
+        docs = await advanced_rag_search(
+            query=question,
+            n_candidates=n_candidates,
+            final_results=final_results,
+            alpha=alpha
+        )
+    else:
+        basic_docs = search_documents(
+            query=question,
+            n_results=final_results
+        )
+        docs = [
+            {
+                "text": d["text"],
+                "metadata": d["metadata"],
+                "hybrid_score": d["similarity"]
+            }
+            for d in basic_docs
+        ]
+
+    has_relevant_docs = len(docs) > 0
+
+    if not has_relevant_docs:
+        return {
+            "answer": "I don't have any relevant documents to answer this question. Please upload relevant documents first.",
+            "sources": [],
+            "chunks_used": 0,
+            "session_id": session_id,
+            "retrieval_method": "advanced" if use_advanced else "basic",
+            "has_relevant_docs": False
+        }
+
+    # format context with source citations
+    context_parts = []
+    for doc in docs:
+        source = doc["metadata"].get("source", "unknown")
+        page = doc["metadata"].get("page_or_slide", "?")
+        score = doc.get("hybrid_score") or doc.get("rerank_score", 0)
+        context_parts.append(
+            f"[Source: {source}, Page: {page}]\n{doc['text']}"
+        )
+    context = "\n\n---\n\n".join(context_parts)
+
+    # get conversation memory
+    memory = get_memory(session_id)
+    history = memory.load_memory_variables({})["history"]
+
+    # generate answer
+    chain = conversational_rag_prompt | llm | parser
+
+    answer = await chain.ainvoke({
+        "context": context,
+        "question": question,
+        "history": history
+    })
+
+    # save to memory
+    memory.save_context(
+        {"input": question},
+        {"output": answer}
+    )
+
+    # extract unique sources
+    sources = list(set([
+        f"{d['metadata'].get('source', 'unknown')} — page {d['metadata'].get('page_or_slide', '?')}"
+        for d in docs
+    ]))
+
+    return {
+        "answer": answer,
+        "sources": sources,
+        "chunks_used": len(docs),
+        "session_id": session_id,
+        "retrieval_method": "hybrid_search + reranking" if use_advanced else "semantic_search",
+        "has_relevant_docs": True
     }
