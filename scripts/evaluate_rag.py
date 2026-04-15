@@ -30,7 +30,7 @@ from ragas.metrics import (
     context_recall,
     context_precision
 )
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.chat_models import ChatOllama
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -153,10 +153,9 @@ def run_ragas_evaluation(data: dict) -> dict:
 
     dataset = Dataset.from_dict(data)
 
-    # use Gemini instead of Groq for evaluation
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
+    # use local Ollama — no API keys, no rate limits
+    llm = ChatOllama(
+        model="llama3.2",
         temperature=0
     )
 

@@ -8,6 +8,18 @@ from app.models import AgentQuery, AgentResponse, GraphQuery, GraphResponse, Res
 from app.services.agent_service import run_agent
 from app.services.langgraph_service import run_graph
 from app.services.multi_agent_service import run_research_pipeline
+from app.models import (
+    AgentQuery, AgentResponse,
+    GraphQuery, GraphResponse,
+    ResearchQuery, ResearchResponse,
+    HITLStartRequest, HITLResumeRequest,
+    HITLStartResponse, HITLResumeResponse
+)
+from app.services.hitl_service import (
+    start_pipeline,
+    resume_pipeline,
+    get_pending_reviews
+)
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -71,3 +83,47 @@ async def research_agent(query: ResearchQuery):
         return ResearchResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/hitl/start", response_model=HITLStartResponse)
+async def hitl_start(request: HITLStartRequest):
+    """
+    Start a human-in-the-loop pipeline.
+    Agent analyzes content and proposes actions.
+    Pipeline PAUSES and waits for human approval.
+    Returns task_id — use this to approve or reject.
+    """
+    try:
+        result = await start_pipeline(request.content)
+        return HITLStartResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/hitl/resume", response_model=HITLResumeResponse)
+async def hitl_resume(request: HITLResumeRequest):
+    """
+    Resume a paused pipeline after human review.
+    Send task_id + decision (approved/rejected) + optional feedback.
+    Pipeline continues from where it paused.
+    """
+    try:
+        result = await resume_pipeline(
+            task_id=request.task_id,
+            decision=request.decision,
+            feedback=request.feedback
+        )
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        return HITLResumeResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hitl/pending")
+async def hitl_pending():
+    """
+    Get all pipeline runs currently waiting for human review.
+    """
+    return {"pending_reviews": get_pending_reviews()}

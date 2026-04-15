@@ -61,8 +61,8 @@ portfolio of production-grade AI projects.
 | Status | Day | Topic | What I'll build |
 |--------|-----|-------|-----------------|
 | ✅ | Day 15 | Agent Foundations | ReAct pattern, tool calling, simple agent with web search + calculator tools |
-| ⏳ | Day 16 | LangGraph Basics | State machines, nodes, edges, conditional routing |
-| ⏳ | Day 17 | Multi-Agent Systems | Orchestrator + researcher + summarizer + critic agent |
+| ✅ | Day 16 | LangGraph Basics | State machines, nodes, edges, conditional routing |
+| ✅ | Day 17 | Multi-Agent Systems | Orchestrator + researcher + summarizer + critic agent |
 | ⏳ | Day 18 | Human in the Loop | Approval checkpoints, interrupt and resume |
 | ⏳ | Day 19 | AutoGen + CrewAI | Role-based agent teams, multi-agent conversations |
 | ⏳ | Day 20 | Agent API | LangGraph agent exposed as FastAPI endpoints with SSE streaming |

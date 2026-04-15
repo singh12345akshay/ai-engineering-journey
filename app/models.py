@@ -191,3 +191,27 @@ class ResearchResponse(BaseModel):
     sources: list[str]
     draft_answer: str
     critique: str
+    
+class HITLStartRequest(BaseModel):
+    content: str = Field(..., min_length=10, max_length=2000)
+
+
+class HITLResumeRequest(BaseModel):
+    task_id: str = Field(..., min_length=1)
+    decision: str = Field(..., pattern="^(approved|rejected)$")
+    feedback: str = Field(default="")
+
+
+class HITLStartResponse(BaseModel):
+    task_id: str
+    analysis: str
+    proposed_actions: list[str]
+    status: str
+    message: str
+
+
+class HITLResumeResponse(BaseModel):
+    task_id: str
+    decision: str
+    execution_result: str
+    status: str
