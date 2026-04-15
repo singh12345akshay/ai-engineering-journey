@@ -4,12 +4,13 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import HumanMessage, AIMessage
 from app.config import settings
 from app.services.advanced_rag import advanced_rag_search
 from app.services.embeddings import get_langchain_retriever
 from langchain_community.chat_models import ChatOllama
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
 
 # initialise the LLM once
 # temperature=0.7 for general chat
@@ -60,13 +61,10 @@ def build_prompted_chain(system_instruction: str):
 conversation_memories: dict = {}
 
 
-def get_memory(session_id: str) -> ConversationBufferMemory:
-    """Get or create memory for a session."""
+def get_memory(session_id: str):
+    """Get or create message history for a session."""
     if session_id not in conversation_memories:
-        conversation_memories[session_id] = ConversationBufferMemory(
-            return_messages=True,
-            memory_key="history"
-        )
+        conversation_memories[session_id] = ChatMessageHistory()
     return conversation_memories[session_id]
 
 
@@ -85,7 +83,7 @@ async def ask_with_memory(question: str, session_id: str) -> dict:
     memory = get_memory(session_id)
 
     # load existing history
-    history = memory.load_memory_variables({})["history"]
+    history = memory.messages
 
     # build chain
     chain = conversation_prompt | llm | parser
@@ -123,10 +121,9 @@ def get_conversation_history(session_id: str) -> dict:
         return {"session_id": session_id, "history": []}
 
     memory = conversation_memories[session_id]
-    history = memory.load_memory_variables({})["history"]
-
     formatted = []
-    for msg in history:
+
+    for msg in memory.messages:
         if isinstance(msg, HumanMessage):
             formatted.append({"role": "user", "content": msg.content})
         elif isinstance(msg, AIMessage):
@@ -248,7 +245,7 @@ async def ask_conversational_rag(question: str,
     context = format_docs(docs) if docs else "No relevant documents found."
 
     # load conversation history
-    history = memory.load_memory_variables({})["history"]
+    history = memory.messages
 
     # build chain
     chain = conversational_rag_prompt | llm | parser
@@ -261,10 +258,8 @@ async def ask_conversational_rag(question: str,
     })
 
     # save to memory
-    memory.save_context(
-        {"input": question},
-        {"output": answer}
-    )
+    memory.add_user_message(question)
+    memory.add_ai_message(answer)
 
     # extract sources
     sources = []

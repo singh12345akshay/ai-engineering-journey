@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from app.models import AgentQuery, AgentResponse
 from app.services.agent_service import run_agent
+from app.models import AgentQuery, AgentResponse, GraphQuery, GraphResponse
+from app.services.agent_service import run_agent
+from app.services.langgraph_service import run_graph
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -35,5 +38,18 @@ async def ask_agent(query: AgentQuery):
     try:
         result = await run_agent(query.question)
         return AgentResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/graph", response_model=GraphResponse)
+async def graph_agent(query: GraphQuery):
+    """
+    LangGraph agent — explicit state machine with conditional routing.
+    Classifies query then routes to document search or direct answer.
+    More predictable than ReAct agent.
+    """
+    try:
+        result = await run_graph(query.question)
+        return GraphResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

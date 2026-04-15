@@ -158,3 +158,19 @@ class AgentResponse(BaseModel):
     question: str
     answer: str
     status: str
+    
+class GraphQuery(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self
+
+
+class GraphResponse(BaseModel):
+    question: str
+    answer: str
+    query_type: str
+    sources: list[str]
+    chunks_used: int

@@ -173,7 +173,6 @@ def run_ragas_evaluation(data: dict) -> dict:
         llm=ragas_llm,
         embeddings=ragas_embeddings,
         raise_exceptions=False,
-        is_async=False
     )
 
     return result
