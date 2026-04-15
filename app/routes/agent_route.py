@@ -4,6 +4,10 @@ from app.services.agent_service import run_agent
 from app.models import AgentQuery, AgentResponse, GraphQuery, GraphResponse
 from app.services.agent_service import run_agent
 from app.services.langgraph_service import run_graph
+from app.models import AgentQuery, AgentResponse, GraphQuery, GraphResponse, ResearchQuery, ResearchResponse
+from app.services.agent_service import run_agent
+from app.services.langgraph_service import run_graph
+from app.services.multi_agent_service import run_research_pipeline
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -51,5 +55,19 @@ async def graph_agent(query: GraphQuery):
     try:
         result = await run_graph(query.question)
         return GraphResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/research", response_model=ResearchResponse)
+async def research_agent(query: ResearchQuery):
+    """
+    Multi-agent research pipeline.
+    3 specialized agents: Researcher → Writer → Critic
+    Each agent has one focused job.
+    Takes 30-60 seconds — runs 3 LLM calls in sequence.
+    """
+    try:
+        result = await run_research_pipeline(query.question)
+        return ResearchResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
