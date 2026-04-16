@@ -20,6 +20,17 @@ from app.services.hitl_service import (
     resume_pipeline,
     get_pending_reviews
 )
+from app.services.autogen_service import run_autogen_debate
+from app.services.crewai_service import run_crew_research
+from app.models import (
+    AgentQuery, AgentResponse,
+    GraphQuery, GraphResponse,
+    ResearchQuery, ResearchResponse,
+    HITLStartRequest, HITLResumeRequest,
+    HITLStartResponse, HITLResumeResponse,
+    DebateQuery, DebateResponse,
+    CrewQuery, CrewResponse
+)
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -127,3 +138,32 @@ async def hitl_pending():
     Get all pipeline runs currently waiting for human review.
     """
     return {"pending_reviews": get_pending_reviews()}
+
+@router.post("/autogen/debate", response_model=DebateResponse)
+async def autogen_debate(query: DebateQuery):
+    """
+    AutoGen multi-agent debate.
+    AI Engineer answers, Devil's Advocate challenges.
+    Agents converse until reaching a complete answer.
+    Takes 30-60 seconds — multiple LLM calls.
+    """
+    try:
+        result = await run_autogen_debate(query.question)
+        return DebateResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/crew/research", response_model=CrewResponse)
+async def crew_research(query: CrewQuery):
+    """
+    CrewAI role-based research pipeline.
+    Researcher + Writer + QA Editor work as a team.
+    Each agent has a defined role, goal, and backstory.
+    Takes 45-90 seconds — sequential agent tasks.
+    """
+    try:
+        result = await run_crew_research(query.question)
+        return CrewResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

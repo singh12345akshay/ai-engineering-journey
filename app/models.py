@@ -215,3 +215,34 @@ class HITLResumeResponse(BaseModel):
     decision: str
     execution_result: str
     status: str
+    
+class DebateQuery(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self
+
+
+class DebateResponse(BaseModel):
+    question: str
+    final_answer: str
+    conversation: list
+    total_exchanges: int
+
+
+class CrewQuery(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+
+    @model_validator(mode='after')
+    def clean_question(self):
+        self.question = self.question.strip()
+        return self
+
+
+class CrewResponse(BaseModel):
+    question: str
+    answer: str
+    agents_used: list[str]
+    process: str
