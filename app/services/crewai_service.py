@@ -96,7 +96,7 @@ async def run_crew_research(question: str) -> dict:
         agents=[researcher, writer, reviewer],
         tasks=[research_task, writing_task, review_task],
         process=Process.sequential,  # tasks run in order
-        verbose=True
+        verbose=True,
         max_rpm=10
     )
 

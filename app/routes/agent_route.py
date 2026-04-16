@@ -15,6 +15,8 @@ from app.models import (
     HITLStartRequest, HITLResumeRequest,
     HITLStartResponse, HITLResumeResponse
 )
+from fastapi.responses import StreamingResponse
+from app.services.streaming_agent_service import stream_research_pipeline
 from app.services.hitl_service import (
     start_pipeline,
     resume_pipeline,
@@ -167,3 +169,63 @@ async def crew_research(query: CrewQuery):
         return CrewResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/stream/research")
+async def stream_research(query: ResearchQuery):
+    """
+    Streaming multi-agent research pipeline.
+    Returns SSE stream — frontend sees agent progress in real time.
+
+    SSE Events:
+    - status: agent is working on something
+    - result: agent completed a step
+    - done: final answer ready
+    - error: something went wrong
+
+    Use EventSource in frontend or curl --no-buffer to test.
+    """
+    return StreamingResponse(
+        stream_research_pipeline(query.question),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"  # disable nginx buffering
+        }
+    )
+    
+@router.get("/status")
+async def agent_status():
+    """
+    Overview of all agent endpoints and their capabilities.
+    """
+    return {
+        "status": "running",
+        "agents": {
+            "react_agent": {
+                "endpoint": "POST /agent/ask",
+                "description": "ReAct agent with 4 tools",
+                "tools": ["web_search", "wikipedia", "calculator", "document_search"],
+                "best_for": "Open-ended questions needing multiple tools"
+            },
+            "langgraph_agent": {
+                "endpoint": "POST /agent/graph",
+                "description": "LangGraph state machine with conditional routing",
+                "best_for": "Structured workflows with known decision points"
+            },
+            "multi_agent": {
+                "endpoint": "POST /agent/research",
+                "description": "Researcher + Writer + Critic pipeline",
+                "best_for": "Deep research questions needing quality review"
+            },
+            "streaming_agent": {
+                "endpoint": "POST /agent/stream/research",
+                "description": "Multi-agent pipeline with SSE streaming",
+                "best_for": "Real-time progress visibility in frontend"
+            },
+            "hitl_agent": {
+                "endpoint": "POST /agent/hitl/start",
+                "description": "Human-in-the-loop pipeline with approval",
+                "best_for": "High-stakes actions requiring human review"
+            }
+        }
+    }
