@@ -12,7 +12,8 @@ from app.config import settings
 
 # ── Model Client (Groq via OpenAI-compatible endpoint) ───────────────────────
 
-def _get_client():
+def _get_client() -> OpenAIChatCompletionClient:
+    """Create an OpenAI-compatible client pointed at the Groq endpoint."""
     return OpenAIChatCompletionClient(
         model=settings.MODEL,
         api_key=settings.GROQ_API_KEY,

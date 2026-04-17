@@ -83,6 +83,95 @@ if not results:
 
 ---
 
+---
+
+## Week 3 — AI Agents + LangGraph
+
+### Q12. What is the ReAct pattern and why does it work?
+
+ReAct = Reason + Act. Instead of answering directly, the agent produces a
+Thought (what it needs to find), then an Action (which tool to call), then
+observes the result, then reasons again. This loop continues until it has
+enough information to give a final answer.
+
+Why it works: the model can decompose a multi-step question into smaller
+lookups, verify intermediate results, and course-correct if a tool returns
+nothing useful. Without this loop, the model either guesses or hallucinates
+for anything outside its training data.
+
+---
+
+### Q13. What is LangGraph and how is it different from a plain LangChain chain?
+
+A LangChain chain is linear — input goes through steps A → B → C and exits.
+LangGraph is a directed graph — steps are nodes, transitions are edges, and
+the path through the graph depends on the current state. Nodes can loop,
+branch, wait for human input, or call other subgraphs.
+
+LangGraph adds three things chains cannot express:
+1. Conditional branching — go to node X or node Y based on the state
+2. Loops — retry, self-correct, or escalate
+3. Persistent state — pause execution, store state, resume later
+
+In production this matters because real agent tasks are not linear. A
+research task might need 3 rounds of refinement. A document processing
+task might need human approval. A chatbot might need to branch on intent.
+
+---
+
+### Q14. How does human-in-the-loop work in LangGraph?
+
+HITL uses LangGraph's interrupt mechanism:
+1. `start_pipeline` runs the graph until it hits an interrupt node, then
+   saves the graph state and returns a `task_id`
+2. A human reviews the proposed action via the API
+3. `resume_pipeline` loads the saved state by `task_id`, injects the human's
+   decision (approved/rejected + optional feedback), and continues the graph
+
+The key engineering insight: HITL is a state persistence problem. The graph
+state must be serialisable and storable so it can be resumed in a different
+process or after a server restart. In production you'd use a database or
+Redis instead of an in-memory dict.
+
+---
+
+### Q15. What is the difference between AutoGen and CrewAI?
+
+**AutoGen** is conversation-based — agents send messages to each other in a
+chat loop. The pattern is natural dialogue: one agent responds, another
+replies, until a termination condition is met. Good for debate, critique,
+and back-and-forth refinement.
+
+**CrewAI** is task-based — agents have roles, goals, and backstories, and
+are assigned tasks with expected outputs. The Crew runs tasks sequentially
+(or in parallel) with each agent picking up where the last left off.
+Good for pipelines where each step needs a different specialisation.
+
+When to use which:
+- Need multiple perspectives on the same question → AutoGen
+- Need a pipeline of specialists (researcher → writer → reviewer) → CrewAI
+- Need agents to autonomously hand off work with defined quality gates → CrewAI
+
+---
+
+### Q16. Why does SSE streaming matter for agent endpoints?
+
+Without streaming, the client fires a request and waits silently for 30-90
+seconds while 3-5 LLM calls run sequentially. This looks broken.
+
+With SSE streaming, the server emits events as each agent step completes:
+```
+data: {"type": "status", "message": "Researcher is working..."}
+data: {"type": "result", "step": "research", "content": "..."}
+data: {"type": "status", "message": "Writer is working..."}
+data: {"type": "done", "answer": "..."}
+```
+
+The frontend shows real-time progress, which makes a 60-second pipeline
+feel responsive instead of broken.
+
+---
+
 ## Key lesson from Day 5
 
 Semantic search working correctly depends on two things equally:

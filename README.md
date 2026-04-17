@@ -18,7 +18,7 @@ portfolio of production-grade AI projects.
 |--------|-------|----------|
 | ✅ | Week 1 — Python for AI + LLM Foundations | Week 1 |
 | ✅ | Week 2 — RAG Pipelines + LangChain | Week 2 |
-| 🔄 | Week 3 — AI Agents + LangGraph | Week 3 |
+| ✅ | Week 3 — AI Agents + LangGraph | Week 3 |
 | ⏳ | Week 4 — LangChain Deep Dive + HuggingFace | Week 4 |
 | ⏳ | Month 2 — Fine-tuning + Cloud + MLOps | Month 2 |
 | ⏳ | Month 3 — Advanced Projects + Interview Prep | Month 3 |
@@ -56,17 +56,17 @@ portfolio of production-grade AI projects.
 
 ---
 
-### Week 3 — AI Agents + LangGraph 🔄
+### Week 3 — AI Agents + LangGraph ✅
 
-| Status | Day | Topic | What I'll build |
-|--------|-----|-------|-----------------|
-| ✅ | Day 15 | Agent Foundations | ReAct pattern, tool calling, simple agent with web search + calculator tools |
-| ✅ | Day 16 | LangGraph Basics | State machines, nodes, edges, conditional routing |
-| ✅ | Day 17 | Multi-Agent Systems | Orchestrator + researcher + summarizer + critic agent |
-| ✅ | Day 18 | Human in the Loop | Approval checkpoints, interrupt and resume |
-| ⏳ | Day 19 | AutoGen + CrewAI | Role-based agent teams, multi-agent conversations |
-| ⏳ | Day 20 | Agent API | LangGraph agent exposed as FastAPI endpoints with SSE streaming |
-| ⏳ | Day 21 | Week 3 Cleanup | Clean up, LinkedIn post, README update |
+| Status | Day | Topic | What I built |
+|--------|-----|-------|--------------|
+| ✅ | Day 15 | Agent Foundations | ReAct pattern, tool calling, agent with web search + Wikipedia + calculator + document search tools |
+| ✅ | Day 16 | LangGraph Basics | State machines, nodes, edges, conditional routing — graph agent with document/direct answer routing |
+| ✅ | Day 17 | Multi-Agent Systems | Orchestrator + researcher + writer + critic pipeline, SSE streaming of agent progress |
+| ✅ | Day 18 | Human in the Loop | Approval checkpoints, interrupt and resume with task_id, pending review queue |
+| ✅ | Day 19 | AutoGen + CrewAI | AutoGen debate (AI Engineer vs Devil's Advocate), CrewAI role-based research team |
+| ✅ | Day 20 | Agent API | All agents exposed as FastAPI endpoints, SSE streaming, /agent/status overview |
+| ✅ | Day 21 | Week 3 Cleanup | Deprecation warnings fixed, autogen_service rewritten to v0.7 API, README updated |
 
 ---
 
@@ -94,6 +94,7 @@ portfolio of production-grade AI projects.
 - Gemini API (gemini-2.0-flash) — fallback
 - Ollama (llama3.2) — local fallback when both exhausted
 - LangChain + LCEL
+- LangGraph — agent state machines + conditional routing
 - LangSmith — LLM monitoring and tracing
 - ChromaDB — vector database
 - sentence-transformers (all-MiniLM-L6-v2)
@@ -101,10 +102,10 @@ portfolio of production-grade AI projects.
 - CrossEncoder (ms-marco-MiniLM-L-6-v2) — reranking
 - pymupdf + python-pptx + openpyxl — document parsing
 - RAGAS — RAG evaluation framework
+- AutoGen (autogen-agentchat 0.7) — multi-agent conversations
+- CrewAI — role-based agent teams
 
 ### Coming in Month 2
-- LangGraph — agent state machines
-- AutoGen + CrewAI — multi-agent frameworks
 - HuggingFace Transformers
 - Docker + Kubernetes
 - AWS / Azure
@@ -127,6 +128,17 @@ portfolio of production-grade AI projects.
 - Re-ranking with cross-encoder improves precision after retrieval
 - RAGAS measures what you can't see by eye — faithfulness, relevancy, recall, precision
 - Rate limit management is a real production AI engineering skill
+
+### Week 3
+- ReAct = Reason + Act loop — agents decide which tool to call based on intermediate reasoning
+- LangGraph makes agent control flow explicit — nodes are steps, edges are transitions, state is shared
+- Conditional edges are the key primitive — the graph branches based on the current state value
+- Multi-agent pipelines beat single-agent for quality — specialised roles (researcher/writer/critic) produce better output
+- Human-in-the-loop requires persistent state — interrupt → store → resume is a state management problem
+- AutoGen 0.7 API is a complete rewrite from 0.2 — `RoundRobinGroupChat` + `TextMentionTermination` replaces `GroupChatManager`
+- CrewAI agents need a defined role, goal, and backstory — the backstory shapes how the agent interprets its task
+- SSE streaming from agents gives real-time visibility — critical for long-running pipelines where silent waiting kills UX
+- Dependency conflicts compound fast — pinning `langchain-core` to `0.3.84` is the stable floor for this stack
 
 ---
 

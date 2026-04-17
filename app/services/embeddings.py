@@ -2,14 +2,14 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
 from langchain_chroma import Chroma
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # load the embedding model once at startup
 # all-MiniLM-L6-v2 is small, fast, and good quality
 # downloads automatically on first run (~90MB)
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-lc_embeddings = SentenceTransformerEmbeddings(
+lc_embeddings = HuggingFaceEmbeddings(
     model_name="all-MiniLM-L6-v2"
 )
 

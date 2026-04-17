@@ -30,8 +30,8 @@ from ragas.metrics import (
     context_recall,
     context_precision
 )
-from langchain_community.chat_models import ChatOllama
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 
@@ -159,7 +159,7 @@ def run_ragas_evaluation(data: dict) -> dict:
         temperature=0
     )
 
-    embeddings = SentenceTransformerEmbeddings(
+    embeddings = HuggingFaceEmbeddings(
         model_name="all-MiniLM-L6-v2"
     )
 

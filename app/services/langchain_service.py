@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from app.config import settings
 from app.services.advanced_rag import advanced_rag_search
 from app.services.embeddings import get_langchain_retriever
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 
