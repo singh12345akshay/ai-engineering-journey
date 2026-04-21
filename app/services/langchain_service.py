@@ -439,3 +439,27 @@ async def document_qa(request_data: dict) -> dict:
         "retrieval_method": "hybrid_search + reranking" if use_advanced else "semantic_search",
         "has_relevant_docs": True
     }
+    
+from langchain_huggingface import HuggingFacePipeline
+from transformers import pipeline as hf_pipeline
+
+
+def get_local_llm():
+    """
+    Load a local HuggingFace model as a LangChain LLM.
+    Uses GPT-2 for demonstration — replace with any model.
+    In production use: mistralai/Mistral-7B-Instruct-v0.2
+    """
+    # create HuggingFace pipeline
+    hf_pipe = hf_pipeline(
+        "text-generation",
+        model="gpt2",
+        max_new_tokens=200,
+        temperature=0.7,
+        do_sample=True
+    )
+
+    # wrap as LangChain LLM
+    local_llm = HuggingFacePipeline(pipeline=hf_pipe)
+
+    return local_llm
